@@ -4,6 +4,7 @@ import pandas as pd
 import random
 import plotly.express as px
 import plotly.graph_objects as go 
+from datetime import timedelta
 
 
 #Display title and Description 
@@ -34,28 +35,26 @@ data = data.dropna(how="all")
 
 yesterday_level = data["Tank Level"].iloc[-1]
 yesterday_vol = data[col5].iloc[-1]
+
 with tab1:
     with st.form("user_form"):
         today_date = st.date_input("Enter the date")
         yesterday = st.number_input("Yesterday level , cm ",value= yesterday_level)
+        yester_voll = st.number_input("Yesterday Tank Volume (L)", value=yesterday_vol)
         level = st.number_input("Today Level , cm")
         export = st.number_input("Export , bbl")
         req_dosage = st.number_input("Required Dosage , ppm")
         calculate = st.form_submit_button("Calculate")
         submit = st.form_submit_button("Submit")
-        
-
-
-
 
     if submit:
         
         #Performing Calculations
-        datenow = today_date
+        datenow = today_date -timedelta(days=1)
         total_injected = "{:.2f}".format((yesterday-level)*38)
         inj_dosage = "{:.2f}".format((float(total_injected)/(export*0.159))*1000)
         flowmeter =  "{:.2f}".format(float(total_injected)- float(random.uniform(1,3)))
-        today_vol = "{:.2f}".format(float(yesterday_vol)-float(total_injected))
+        today_vol = "{:.2f}".format(float(yester_voll)-float(total_injected))
 
         if not level or not export or not req_dosage:
             st.warning("Please enter all required field before calculate")
@@ -82,11 +81,11 @@ with tab1:
     if calculate:
         
         #Performing Calculations
-        datenow = today_date
+        datenow = today_date -timedelta(days=1)
         total_injected = "{:.2f}".format((yesterday-level)*38)
         inj_dosage = "{:.2f}".format((float(total_injected)/(export*0.159))*1000)
         flowmeter =  "{:.2f}".format(float(total_injected)- float(random.uniform(1,3)))
-        today_vol = "{:.2f}".format(float(yesterday_vol)-float(total_injected))
+        today_vol = "{:.2f}".format(float(yester_voll)-float(total_injected))
 
         if not level or not export or not req_dosage:
             st.warning("Please enter all required field before calculate")
