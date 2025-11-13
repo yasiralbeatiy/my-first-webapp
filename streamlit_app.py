@@ -78,7 +78,7 @@ with tab1:
         updated_df = pd.concat([data,new_data],ignore_index=True)
         conn.update(spreadsheet=url ,worksheet = "RETM",data=updated_df)
         st.success("Data Updated Successfully!")
-
+       
     if calculate:
         
         #Performing Calculations
@@ -106,8 +106,23 @@ with tab1:
                 col8 : inj_dosage
             }])
 
-            st.dataframe(new_data)
+            average = pd.to_numeric(data[col2].mean(),errors='coerce')
 
+            remaing_days = pd.to_numeric((float(today_vol)-2000)/average,errors= 'coerce')
+            remaing_days = "{:.1f}".format(float(remaing_days))
+            data_strr = (f"RETM: {datenow} \n"
+                         "\n"
+            f"Total Injection : {total_injected} L/d \n"
+            f"Flowmeter : {flowmeter} L/d \n"
+            f"Tank Level : {level} cm \n"
+            f"Volume in Tank: {today_vol} L \n"
+            f"Export : {export} bbl \n"
+            "\n"
+            f"Required Dosage : {req_dosage} ppm \n"
+            f"Injected Dosage : {inj_dosage} \n"
+            f"Next Decanting : {remaing_days} days")
+
+            st.code(data_strr)
 with tab2:
     st.markdown("Actual Dosage Vs Required Dosage (PPM)")
 
@@ -135,3 +150,4 @@ with tab2:
     st.plotly_chart(fig_tankVol,use_container_width=True)
     st.plotly_chart(fig_tankLevel,use_container_width=True)
     st.plotly_chart(fig_actualDosage,use_container_width=True)
+
