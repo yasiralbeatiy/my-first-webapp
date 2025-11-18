@@ -6,6 +6,44 @@ import plotly.express as px
 import plotly.graph_objects as go 
 from datetime import timedelta
 
+
+#Variables
+url = "https://docs.google.com/spreadsheets/d/1E6XfwNLvw8m8oj2lVtglxvyC3edI70qIQOQKFmSYXcc"
+def format(enter_number):
+    formatted_number = f"{enter_number:.2f}"
+    return formatted_number
+#Function to connection to google sheet data
+def connect_gsheet(url,_worksheet):
+    #Establish connection to google sheet
+    conn = st.connection("gsheets", type=GSheetsConnection)
+    #Fetch the data to
+    data = conn.read(spreadsheet=url ,worksheet = _worksheet, usecols=list(range(8)),ttl=5)
+    data = data.dropna(how="all")
+    return data
+
+data = connect_gsheet(url,"RETM")
+
+#Function to update Google Sheet with new Data frame 
+def update_data(url,_worksheet,old_data,new_data):
+     conn = st.connection("gsheets", type=GSheetsConnection)
+     updated_df = pd.concat([old_data,new_data],ignore_index=True)
+     conn.update(spreadsheet=url ,worksheet = _worksheet,data=updated_df)
+     st.success("Data Updated Successfully!")
+
+#Function Delete Selected row in data sheet.
+def delete_row(url,_worksheet,rowIndex):
+    #Establish connection to google sheet
+    conn = st.connection("gsheets", type=GSheetsConnection)
+    #Fetch the data to
+    data = conn.read(spreadsheet=url ,worksheet = _worksheet, usecols=list(range(8)),ttl=5)
+    data = data.dropna(how="all")
+    data = data.drop(data.index[rowIndex])
+    conn.update(spreadsheet=url,worksheet=_worksheet,data=data)
+
+     
+
+st.set_page_config(layout="wide")
+
 def login():
     st.title("Login")
 
@@ -33,9 +71,6 @@ def login():
 def retm_readings():
     st.title("RETM Monitoring sheet")
     st.markdown("Updating daily readings and give insghits")
-
-    url = "https://docs.google.com/spreadsheets/d/1E6XfwNLvw8m8oj2lVtglxvyC3edI70qIQOQKFmSYXcc"
-
     #My Excel Sheet headers
     col1 = "Date"
     col2 = "Total Injection"
@@ -46,14 +81,7 @@ def retm_readings():
     col7 = "Req Dosage"
     col8 = "Inj Dosage"
 
-    tab1 , tab2 = st.tabs(["RETM Readings","RETM Graphs"])
-
-    #Establish connection to google sheet
-    conn = st.connection("gsheets", type=GSheetsConnection)
-
-    #Fetch the data to
-    data = conn.read(spreadsheet=url ,worksheet = "RETM", usecols=list(range(8)),ttl=5)
-    data = data.dropna(how="all")
+    tab1 , tab2 , tab3 = st.tabs(["RETM Readings","RETM Graphs","Editing Data"])
 
     yesterday_level = data["Tank Level"].iloc[-1]
     yesterday_vol = data[col5].iloc[-1]
@@ -95,10 +123,8 @@ def retm_readings():
                     col7 : req_dosage,
                     col8 : inj_dosage
                 }])
-
-            updated_df = pd.concat([data,new_data],ignore_index=True)
-            conn.update(spreadsheet=url ,worksheet = "RETM",data=updated_df)
-            st.success("Data Updated Successfully!")
+            
+            update_data(url,"RETM",data,new_data)
         
         if calculate:
             
@@ -172,6 +198,16 @@ def retm_readings():
         st.plotly_chart(fig_tankLevel,use_container_width=True)
         st.plotly_chart(fig_actualDosage,use_container_width=True)
 
+
+    with tab3:
+       with st.form("Editing Data"):
+                st.subheader("Select the Row you need to delete")
+                selected_row = st.selectbox("Select data",connect_gsheet(url,"RETM").index +2)
+                btn_deleteRow = st.form_submit_button("Delete Selected Row")
+                if btn_deleteRow:
+                    delete_row(url,"RETM",selected_row-2)
+                    st.progress(100,"Deleteing..")
+                    st.success(f"Deleted Row {selected_row}")
 def main_app():
     st.title(f"Welcome {st.session_state['username']} 👋")
     st.write("This is your protected content.")
@@ -185,3 +221,6 @@ if "logged_in" not in st.session_state or not st.session_state["logged_in"]:
     login()
 else:
     main_app()
+
+
+
