@@ -138,9 +138,8 @@ def retm_readings():
             if not level or not export or not req_dosage:
                 st.warning("Please enter all required field before calculate")
                 st.stop()
-            elif data[col1].str.contains(datenow.strftime("%Y-%m-%d")).any():
-                st.warning("The Data already inserted")
-                
+
+            else:
                 new_data = pd.DataFrame([{
                     col1 : datenow.strftime("%Y-%m-%d"),
                     col2 : total_injected,
@@ -169,7 +168,6 @@ def retm_readings():
                 f"Next Decanting : {remaing_days} days")
 
                 st.code(data_strr)
-
     with tab2:
         st.markdown("Actual Dosage Vs Required Dosage (PPM)")
 
