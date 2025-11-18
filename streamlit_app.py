@@ -109,7 +109,7 @@ def retm_readings():
             if not level or not export or not req_dosage:
                 st.warning("Please enter all required field before calculate")
                 st.stop()
-            elif data[col1].str.contains(datenow.strftime("%Y-%m-%d")).any():
+            elif data[col1].str.contains(datenow.strftime("%m/%d/%Y")).any():
                 st.warning("The Data already inserted")
                 st.stop()
             else:
