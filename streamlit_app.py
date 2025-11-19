@@ -7,6 +7,13 @@ import plotly.graph_objects as go
 from datetime import timedelta
 
 
+
+
+#Function to Calculate Percentage of Tank level
+def percentage_level(data: pd.DataFrame,column_header):
+     results = (data[column_header].iloc[-1]/10000)*100
+     return results
+
 #Variables
 url = "https://docs.google.com/spreadsheets/d/1E6XfwNLvw8m8oj2lVtglxvyC3edI70qIQOQKFmSYXcc"
 def format(enter_number):
@@ -23,14 +30,14 @@ def connect_gsheet(url,_worksheet):
 
 data = connect_gsheet(url,"RETM")
 
-#Function to update Google Sheet with new Data frame 
+#Function to update Google Sheet with new Data frame ##########################################
 def update_data(url,_worksheet,old_data,new_data):
      conn = st.connection("gsheets", type=GSheetsConnection)
      updated_df = pd.concat([old_data,new_data],ignore_index=True)
      conn.update(spreadsheet=url ,worksheet = _worksheet,data=updated_df)
      st.success("Data Updated Successfully!")
 
-#Function Delete Selected row in data sheet.
+#Function Delete Selected row in data sheet.####################################################
 def delete_row(url,_worksheet,rowIndex):
     #Establish connection to google sheet
     conn = st.connection("gsheets", type=GSheetsConnection)
@@ -40,8 +47,7 @@ def delete_row(url,_worksheet,rowIndex):
     data = data.drop(data.index[rowIndex])
     conn.update(spreadsheet=url,worksheet=_worksheet,data=data)
 
-     
-
+#################################################################################################     
 st.set_page_config(layout="wide")
 
 def login():
@@ -62,10 +68,6 @@ def login():
             main_app()
         else:
             st.error("Invalid username or password")
-
-# --- Main app ---
-
-
 
 #Display title and Description 
 def retm_readings():
@@ -114,7 +116,7 @@ def retm_readings():
                 st.stop()
             else:
                 new_data = pd.DataFrame([{
-                    col1 : datenow.strftime("%Y-%m-%d"),
+                    col1 : datenow.strftime("%m/%d/%Y"),
                     col2 : total_injected,
                     col3 : flowmeter, 
                     col4 : level,
@@ -206,11 +208,54 @@ def retm_readings():
                     delete_row(url,"RETM",selected_row-2)
                     st.progress(100,"Deleteing..")
                     st.success(f"Deleted Row {selected_row}")
+####################################################################################
+def plot_gauge(_worksheet):
+        l = percentage_level(connect_gsheet(url,_worksheet),"Volume in Tank")
+        l = format(l)
+        fig = go.Figure(go.Indicator(
+             mode = "gauge+number",
+             value = float(l),
+             domain = {'x': [0, 1], 'y': [0, 1]},
+             title = {'text': "Level %"},
+              gauge = {
+             "axis": {"range": [0, 100]}  # 👈 Set gauge range here
+                        }
+        ))
+        st.plotly_chart(fig,use_container_width=True)
+######################################################################################
+def dashboard_page():
+     col1,  col2, col3 = st.columns([1,1,1])
+     with col1:
+        st.markdown(
+    "<h3 style='text-align: center;'>RETM Level %</h3>",
+    unsafe_allow_html=True
+                    )
+        plot_gauge("RETM")
+
+     with col2:
+        st.markdown(
+    "<h3 style='text-align: center;'>36 KPS1 Level %</h3>",
+    unsafe_allow_html=True
+                    )
+        plot_gauge("36 KPS1")
+
+     with col3:
+        st.markdown(
+    "<h3 style='text-align: center;'>24 KPS1 Level %</h3>",
+    unsafe_allow_html=True
+                    )
+        plot_gauge("24 KPS1")
+########################################################################################
 def main_app():
     st.title(f"Welcome {st.session_state['username']} 👋")
     st.write("This is your protected content.")
+    page = st.sidebar.radio("Naviagation",["Dashboard","RETM Readings Update"])
 
-    retm_readings()
+    if page == "Dashboard":
+        dashboard_page()
+    if page =="RETM Readings Update":
+         retm_readings()
+   
     if st.button("Logout"):
         st.session_state.clear()
         st.rerun()
@@ -219,6 +264,9 @@ if "logged_in" not in st.session_state or not st.session_state["logged_in"]:
     login()
 else:
     main_app()
+
+
+
 
 
 
