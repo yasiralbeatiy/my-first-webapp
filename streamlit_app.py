@@ -4,9 +4,9 @@ import pandas as pd
 import random
 import plotly.express as px
 import plotly.graph_objects as go 
-from datetime import timedelta
-
-
+from datetime import timedelta , datetime
+import re
+import pyperclip
 
 
 #Function to Calculate Percentage of Tank level
@@ -47,7 +47,35 @@ def delete_row(url,_worksheet,rowIndex):
     data = data.drop(data.index[rowIndex])
     conn.update(spreadsheet=url,worksheet=_worksheet,data=data)
 
-#################################################################################################     
+#################################################################################################
+#Function for getting data from Clipboard
+def parse_operator_message(text):
+
+    # Extract date (dd-mm-yyyy)
+    date_match = re.search(r"Date[:\s]+(\d{1,2}-\d{1,2}-\d{4})", text)
+    date_value = datetime.strptime(date_match.group(1), "%d-%m-%Y") if date_match else None
+
+    # Extract tank level in cm
+    level_match = re.search(r"Tank Level\(cm\)[:\s]+([\d\.]+)", text)
+    level_value = float(level_match.group(1)) if level_match else None
+
+    # Extract flow rate (L/d)
+    flow_rate_match = re.search(r"Flow Rate\(L/d\)[:\s]+([\d\.]+)", text)
+    flow_rate_value = float(flow_rate_match.group(1)) if flow_rate_match else None
+
+    # Extract total flow (bbl)
+    total_flow_match = re.search(r"Total Flow\s*[:\s]+([\d\.]+)", text)
+    total_flow_value = float(total_flow_match.group(1)) if total_flow_match else None
+
+    # Return as a dictionary
+    return {
+        "Date": date_value,
+        "Tank_Level_cm": level_value,
+        "Flow_Rate_Ld": flow_rate_value,
+        "Total_Flow_bbl": total_flow_value
+    }
+
+
 st.set_page_config(layout="wide")
 
 def login():
@@ -96,8 +124,21 @@ def retm_readings():
             level = st.number_input("Today Level , cm")
             export = st.number_input("Export , bbl")
             req_dosage = st.number_input("Required Dosage , ppm")
+            get_clipboard = st.form_submit_button("Copy from clipboard")
             calculate = st.form_submit_button("Calculate")
             submit = st.form_submit_button("Submit")
+
+        if get_clipboard:
+            raw_text = parse_operator_message(pyperclip.paste())
+            dada = pd.DataFrame([raw_text])
+            st_data = dada["Date"]
+            st_level = dada["Tank_Level_cm"].iloc[-1]
+            st_export = dada["Total_Flow_bbl"].iloc[-1]
+
+            st.number_input("Level is :",value=st_level)
+            st.number_input("Export is :",value=st_export)
+
+          
 
         if submit:
             
@@ -209,14 +250,14 @@ def retm_readings():
                     st.progress(100,"Deleteing..")
                     st.success(f"Deleted Row {selected_row}")
 ####################################################################################
-def plot_gauge(_worksheet):
+def plot_gauge(_worksheet,gauge_title):
         l = percentage_level(connect_gsheet(url,_worksheet),"Volume in Tank")
         l = format(l)
         fig = go.Figure(go.Indicator(
              mode = "gauge+number",
              value = float(l),
              domain = {'x': [0, 1], 'y': [0, 1]},
-             title = {'text': "Level %"},
+             title = {'text': gauge_title},
               gauge = {
              "axis": {"range": [0, 100]}  # 👈 Set gauge range here
                         }
@@ -226,29 +267,16 @@ def plot_gauge(_worksheet):
 def dashboard_page():
      col1,  col2, col3 = st.columns([1,1,1])
      with col1:
-        st.markdown(
-    "<h3 style='text-align: center;'>RETM Level %</h3>",
-    unsafe_allow_html=True
-                    )
-        plot_gauge("RETM")
-
+        plot_gauge("RETM","RETM Tank Level %")
      with col2:
-        st.markdown(
-    "<h3 style='text-align: center;'>36 KPS1 Level %</h3>",
-    unsafe_allow_html=True
-                    )
-        plot_gauge("36 KPS1")
-
+        plot_gauge("36 KPS1","36 KPS1 Tank Level %")
      with col3:
-        st.markdown(
-    "<h3 style='text-align: center;'>24 KPS1 Level %</h3>",
-    unsafe_allow_html=True
-                    )
-        plot_gauge("24 KPS1")
+        plot_gauge("24 KPS1","24 KPS1 Tank Level")
+    
+     st.selectbox("Select Chart to show",
+                 ["RETM Level (L)","RETM Total Injection","RETM"])
 ########################################################################################
 def main_app():
-    st.title(f"Welcome {st.session_state['username']} 👋")
-    st.write("This is your protected content.")
     page = st.sidebar.radio("Naviagation",["Dashboard","RETM Readings Update"])
 
     if page == "Dashboard":
@@ -265,6 +293,8 @@ if "logged_in" not in st.session_state or not st.session_state["logged_in"]:
 else:
     main_app()
 
+def plot_lineChart(_data , _title):
+    print("Hello world")
 
 
 
